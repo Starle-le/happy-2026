@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>2026 元旦快乐 - 自动烟花秀</title>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            overflow: hidden;
+            color: #fff;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        #ui {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+            user-select: none;
+        }
+        h1 {
+            font-size: 4rem;
+            margin: 0;
+            text-shadow: 0 0 20px #ff0000;
+            opacity: 0.8;
+        }
+        p {
+            font-size: 1.5rem;
+            color: #ffd700;
+        }
+        #hint {
+            position: fixed;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 1rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <h1>HAPPY NEW YEAR</h1>
+        <p>HAPPY NEW YEAR 2026</p>
+    </div>
+    
+    <div id="hint">点击屏幕开启声效及沉浸模式</div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let audioCtx = null;
+
+        // 初始化画布大小
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // 音频系统：使用 Web Audio API 生成合成爆炸声（无需外部音频文件）
+        function playExplodeSound() {
+            if (!audioCtx) return;
+            const oscillator = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            oscillator.type = 'sawtooth';
+            oscillator.frequency.setValueAtTime(100, audioCtx.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            
+            oscillator.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.5);
+        }
+
+        // 解锁音频播放
+        window.addEventListener('click', () => {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                document.getElementById('hint').style.display = 'none';
+            }
+        });
+
+        class Particle {
+            constructor(x, y, color, velocity) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.velocity = velocity;
+                this.alpha = 1;
+                this.friction = 0.95;
+                this.gravity = 0.15;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+
+            update() {
+                this.velocity.x *= this.friction;
+                this.velocity.y *= this.friction;
+                this.velocity.y += this.gravity;
+                this.x += this.velocity.x;
+                this.y += this.velocity.y;
+                this.alpha -= 0.01;
+            }
+        }
+
+        let particles = [];
+
+        function createFirework() {
+            const x = Math.random() * width;
+            const y = Math.random() * (height * 0.5); // 在上半部分爆炸
+            const color = `hsl(${Math.random() * 360}, 100%, 60%)`;
+            const particleCount = 60 + Math.floor(Math.random() * 60);
+
+            // 播放声音
+            playExplodeSound();
+
+            for (let i = 0; i < particleCount; i++) {
+                const angle = (Math.PI * 2) / particleCount * i;
+                const speed = Math.random() * 8 + 2;
+                particles.push(new Particle(x, y, color, {
+                    x: Math.cos(angle) * speed,
+                    y: Math.sin(angle) * speed
+                }));
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            // 拖尾效果
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            ctx.fillRect(0, 0, width, height);
+
+            particles.forEach((p, index) => {
+                if (p.alpha <= 0) {
+                    particles.splice(index, 1);
+                } else {
+                    p.update();
+                    p.draw();
+                }
+            });
+
+            // 随机自动发射
+            if (Math.random() < 0.04) {
+                createFirework();
+            }
+        }
+
+        animate();
+    </script>
+</body>
+</html>
