@@ -2,126 +2,147 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>2026 Happy New Year - Automatic Fireworks Show</title>
+    <title>2026 æ–°å¹´å¿«ä¹ - å®¶äººå›¢åœ†çƒŸèŠ±å¤œ</title>
     <style>
         body {
             margin: 0;
-            background: #000;
             overflow: hidden;
-            color: #fff;
+            background-color: #000;
             font-family: "Microsoft YaHei", sans-serif;
-			background: url('VNIT.jpg') no-repeat center center fixed; background-size: cover;
         }
+
+        /* å·¦ä¸Šè§’ç…§ç‰‡å¢™å®¹å™¨ */
+        .family-slideshow {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 280px;
+            height: 200px;
+            border: 5px solid rgba(255, 215, 0, 0.7); /* é‡‘è‰²è¾¹æ¡† */
+            border-radius: 15px;
+            overflow: hidden;
+            z-index: 2000;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .family-slideshow img {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 1.5s ease-in-out;
+        }
+
+        /* æ§åˆ¶æ˜¾ç¤ºå½“å‰å›¾ç‰‡ */
+        .family-slideshow img.active {
+            opacity: 1;
+        }
+
+        /* æ ‡é¢˜æ–‡å­— */
+        .title {
+            position: absolute;
+            width: 100%;
+            top: 10%;
+            text-align: center;
+            color: gold;
+            font-size: 3em;
+            text-shadow: 0 0 10px red;
+            pointer-events: none; /* ä¸é®æŒ¡ç‚¹å‡» */
+            z-index: 1000;
+        }
+
         canvas {
             display: block;
         }
-        #ui {
+
+        /* åº•éƒ¨æç¤º */
+        .hint {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            pointer-events: none;
-            user-select: none;
-        }
-        h1 {
-            font-size: 4rem;
-            margin: 0;
-            text-shadow: 0 0 20px #ff0000;
-            opacity: 0.8;
-        }
-        p {
-            font-size: 1.5rem;
-            color: #ffd700;
-        }
-        #hint {
-            position: fixed;
             bottom: 20px;
             width: 100%;
             text-align: center;
-            font-size: 1rem;
-            color: #666;
+            color: white;
+            opacity: 0.6;
+            z-index: 1000;
         }
     </style>
 </head>
 <body>
 
-    <div id="ui">
-        <h1>HAPPY NEW YEAR</h1>
-        <p>HAPPY NEW YEAR 2026</p>
+    <div class="family-slideshow" id="slideshow">
+        <img src="images/f01.jpg" class="active" alt="f01">
+        <img src="images/f02.jpg" alt="f02">
+        <img src="images/f03.jpg" alt="f03"> 
+		<img src="images/f04.jpg" alt="f04">
+        <img src="images/f05.jpg" alt="f05">
+		<img src="images/f06.jpg" alt="f06">
+        <img src="images/f07.jpg" alt="f07">
+        <img src="images/f08.jpg" alt="f08">
     </div>
-    
-    <div id="hint">click</div>
+
+    <div class="title">å®¶å’Œä¸‡äº‹å…´ Â· 2024 æ–°å¹´å¿«ä¹</div>
+    <div class="hint"> </div>
 
     <canvas id="canvas"></canvas>
 
+     <audio id="bgMusic" loop>
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="fireworkSound">
+        <source src="https://www.soundjay.com/misc/sounds/fireworks-01.mp3" type="audio/mpeg">
+     </audio> 
+
     <script>
+        // --- é€»è¾‘1ï¼šç…§ç‰‡è½®æ’­ ---
+        const imgs = document.querySelectorAll('#slideshow img');
+        let currentImgIndex = 0;
+
+        function cycleImages() {
+            imgs[currentImgIndex].classList.remove('active');
+            currentImgIndex = (currentImgIndex + 1) % imgs.length;
+            imgs[currentImgIndex].classList.add('active');
+        }
+        setInterval(cycleImages, 4000); // æ¯4ç§’æ¢ä¸€å¼ ç…§ç‰‡
+
+
+        // --- é€»è¾‘2ï¼šçƒŸèŠ±åŠ¨ç”» (ç²¾ç®€ç‰ˆ) ---
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        let width, height;
-        let audioCtx = null;
+        const bgMusic = document.getElementById('bgMusic');
+        const fireworkSound = document.getElementById('fireworkSound');
 
-        // ³õÊ¼»¯»­²¼´óĞ¡
-        function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resize);
-        resize();
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
 
-        // ÒôÆµÏµÍ³£ºÊ¹ÓÃ Web Audio API Éú³ÉºÏ³É±¬Õ¨Éù£¨ÎŞĞèÍâ²¿ÒôÆµÎÄ¼ş£©
-        function playExplodeSound() {
-            if (!audioCtx) return;
-            const oscillator = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            
-            oscillator.type = 'sawtooth';
-            oscillator.frequency.setValueAtTime(100, audioCtx.currentTime);
-            oscillator.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-            
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-            
-            oscillator.connect(gain);
-            gain.connect(audioCtx.destination);
-            
-            oscillator.start();
-            oscillator.stop(audioCtx.currentTime + 0.5);
-        }
-
-        // ½âËøÒôÆµ²¥·Å
-        window.addEventListener('click', () => {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                document.getElementById('hint').style.display = 'none';
-            }
+        // ç‚¹å‡»å±å¹•å¼€å§‹æ’­æ”¾éŸ³ä¹
+        document.addEventListener('mousedown', () => {
+            bgMusic.play();
         });
 
         class Particle {
-            constructor(x, y, color, velocity) {
+            constructor(x, y, color) {
                 this.x = x;
                 this.y = y;
                 this.color = color;
-                this.velocity = velocity;
+                this.velocity = {
+                    x: (Math.random() - 0.5) * 8,
+                    y: (Math.random() - 0.5) * 8
+                };
                 this.alpha = 1;
                 this.friction = 0.95;
-                this.gravity = 0.15;
             }
-
             draw() {
-                ctx.save();
                 ctx.globalAlpha = this.alpha;
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
                 ctx.fillStyle = this.color;
                 ctx.fill();
-                ctx.restore();
             }
-
             update() {
                 this.velocity.x *= this.friction;
                 this.velocity.y *= this.friction;
-                this.velocity.y += this.gravity;
+                this.velocity.y += 0.1; // é‡åŠ›
                 this.x += this.velocity.x;
                 this.y += this.velocity.y;
                 this.alpha -= 0.01;
@@ -130,45 +151,35 @@
 
         let particles = [];
 
-        function createFirework() {
-            const x = Math.random() * width;
-            const y = Math.random() * (height * 0.5); // ÔÚÉÏ°ë²¿·Ö±¬Õ¨
-            const color = `hsl(${Math.random() * 360}, 100%, 60%)`;
-            const particleCount = 60 + Math.floor(Math.random() * 60);
-
-            // ²¥·ÅÉùÒô
-            playExplodeSound();
-
-            for (let i = 0; i < particleCount; i++) {
-                const angle = (Math.PI * 2) / particleCount * i;
-                const speed = Math.random() * 8 + 2;
-                particles.push(new Particle(x, y, color, {
-                    x: Math.cos(angle) * speed,
-                    y: Math.sin(angle) * speed
-                }));
+        function createFirework(x, y) {
+            const color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+            for (let i = 0; i < 50; i++) {
+                particles.push(new Particle(x, y, color));
             }
+            // æ’­æ”¾çˆ†ç‚¸å£°
+            fireworkSound.currentTime = 0;
+            fireworkSound.play().catch(()=>{});
         }
 
         function animate() {
-            requestAnimationFrame(animate);
-            // ÍÏÎ²Ğ§¹û
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
-            ctx.fillRect(0, 0, width, height);
-
-            particles.forEach((p, index) => {
-                if (p.alpha <= 0) {
-                    particles.splice(index, 1);
-                } else {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            particles.forEach((p, i) => {
+                if (p.alpha > 0) {
                     p.update();
                     p.draw();
+                } else {
+                    particles.splice(i, 1);
                 }
             });
-
-            // Ëæ»ú×Ô¶¯·¢Éä
-            if (Math.random() < 0.04) {
-                createFirework();
-            }
+            requestAnimationFrame(animate);
         }
+
+        // å®šæ—¶è‡ªåŠ¨å‘å°„çƒŸèŠ±
+        setInterval(() => {
+            createFirework(Math.random() * canvas.width, Math.random() * canvas.height * 0.7);
+        }, 800);
 
         animate();
     </script>
